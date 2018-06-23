@@ -26,6 +26,6 @@ RUN conda config --add channels conda-forge \
 # activate the environment
 ENV PATH /opt/conda/envs/faig/bin:$PATH
 
-RUN python streamer.py
+# RUN python streamer.py
 
 # Need to setup configuration file before running!
