@@ -20,10 +20,12 @@ RUN conda config --add channels conda-forge \
     && conda env create -n faig -f environment.yml \
     && rm -rf /opt/conda/pkgs/*
 
+# ONBUILD ADD environment.yml /environment.yml
+# ONBUILD RUN conda env create -f /environment.yml -n app
+
 # activate the environment
-ENV PATH /opt/conda/envs/myapp/bin:$PATH
+ENV PATH /opt/conda/envs/faig/bin:$PATH
 
-
-# RUN python streamer.py
+RUN python streamer.py
 
 # Need to setup configuration file before running!
