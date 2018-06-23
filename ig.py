@@ -42,6 +42,8 @@ class API(IGClient):
         self.igstreamclient.subscribe(subscription=subscription, listener=on_item_update)
         self.market_ids = {}
 
+        self.ls_subscriptions = {}  #
+
         # get open positions
         self.open_positions = super().positions()
 
@@ -92,6 +94,58 @@ class API(IGClient):
             res['values']['CHANGE_PCT'] = res['snapshot']['percentageChange']
         return res
 
+    def subscribe(self, epic_id, listener=on_item_update):
+        """
+        Create a live subscription to epic via Lightstreamer
+        :param epic_id: string containing epic id
+               listener: function to call on new update
+        :return:
+        """
+        self.logger.debug('ig.py API subscribe')
+        success = False
+        try:
+            subscription = igstream.Subscription(
+                mode="MERGE",
+                items=["MARKET:{}".format(epic_id)],
+                fields=["MID_OPEN", "HIGH", "LOW", "CHANGE", "CHANGE_PCT", "UPDATE_TIME", "MARKET_DELAY",
+                        "MARKET_STATE", "BID", "OFFER"]
+            )
+            sub_key, success = self.igstreamclient.subscribe(subscription=subscription, listener=listener)
+            if success:
+                self.logger.debug('ig.py API subscribe: success.')
+                self.ls_subscriptions[sub_key] = {'epic_id': epic_id, 'running': True}
+            else:
+                self.logger.debug('ig.py API subscribe: fail.')
+        except:
+            self.logger.warning('ig.py API subscribe: exception.')
+
+        return success
+
+    def unsubscribe(self, epic_id=None, sub_key=None):
+        """
+        Unsubscribe a live subscription on Lightstreamer
+        :param epic_id:
+                sub_key:
+        :return:
+        """
+        self.logger.debug('ig.py API unsubscribe')
+        success = False
+        if sub_key is not None:
+            self.igstreamclient.unsubscribe(sub_key)
+            self.ls_subscriptions[sub_key]['running'] = False
+            success = True
+            return
+        elif epic_id is not None:
+            for sub_key in self.ls_subscriptions.keys():
+                if self.ls_subscriptions[sub_key]['running']:
+                    if self.ls_subscriptions[sub_key]['epic_id'] == epic_id:
+                        self.igstreamclient.unsubscribe(sub_key)
+                        self.ls_subscriptions[sub_key]['running'] = False
+                        success = True
+                        return
+        else:
+            self.logger.debug('ig.py API unsubscribe: Unable to unsubscribe')
+
     def placeOrder(self, prediction):
         self.logger.debug('ig.py API placeOrder')
         data = self.handleDealingRules(prediction.get_tradedata())
@@ -140,6 +194,9 @@ class API(IGClient):
                 # systime.sleep(2) # we only get 30 API calls per minute :( but streaming doesn't count, so no sleep
 
                 res = self.fetch_current_price(epic_id)
+                if res is None:  # handle nothing returned/error state
+                    continue
+
                 res['values']['EPIC'] = epic_id
 
                 current_price = res['values']['BID']

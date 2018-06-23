@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(name)-12s %(level
 
 # Setup simple logging to console @ INFO
 console = logging.StreamHandler()
-console.setLevel(logging.INFO)
-# console.setLevel(logging.DEBUG)
+# console.setLevel(logging.INFO)
+console.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
 console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)

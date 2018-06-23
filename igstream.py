@@ -20,7 +20,7 @@ import threading
 import time
 import traceback
 
-#log = logging.getLogger()
+# log = logging.getLogger()
 
 # Modules aliasing and function utilities to support a
 # very coarse version differentiation between Python 2 and Python 3.
@@ -209,6 +209,7 @@ class LSClient(object):
         """Read a single line of content of the Stream Connection."""
         self.logger.debug('igstream.py LSClient _read_from_stream')
         line = self._stream_connection.readline().decode("utf-8").rstrip()
+        self.logger.debug(line)
         return line
 
     def connect(self):
@@ -241,9 +242,7 @@ class LSClient(object):
         self._stream_connection = self._call(
             self._control_url,
             BIND_URL_PATH,
-            {
-                "LS_session": self._session["SessionId"]
-            }
+            { "LS_session": self._session["SessionId"] }
         )
 
         self._bind_counter += 1
@@ -317,24 +316,33 @@ class LSClient(object):
                 self.logger.warning("No connection to Lightstreamer")
 
     def subscribe(self, subscription):
-        """"Perform a subscription request to Lightstreamer Server."""
+        """
+        Perform a subscription request to Lightstreamer Server.
+        :param subscription:
+        :return: _current_subscription_key (int)
+                success (bool)
+        """
         self.logger.debug('igstream.py LSClient subscribe')
         # Register the Subscription with a new subscription key
         self._current_subscription_key += 1
         self._subscriptions[self._current_subscription_key] = subscription
 
-        # Send the control request to perform the subscription
-        server_response = self._control({
-            "LS_session": self._session['SessionId'],
-            "LS_table": self._current_subscription_key,
-            "LS_op": OP['ADD'],
-            # "LS_data_adapter": subscription.adapter,
-            "LS_mode": subscription.mode,
-            "LS_schema": " ".join(subscription.field_names),
-            "LS_id": " ".join(subscription.item_names),
-        })
-        self.logger.debug("igstream.py LSClient subscribe: Server response ---> <{0}>".format(server_response))
-        return self._current_subscription_key
+        try:
+            # Send the control request to perform the subscription
+            server_response = self._control({"LS_session": self._session['SessionId'],
+                                             "LS_table": self._current_subscription_key,
+                                             "LS_op": OP['ADD'],
+                                             # "LS_data_adapter": subscription.adapter,
+                                             "LS_mode": subscription.mode,
+                                             "LS_schema": " ".join(subscription.field_names),
+                                             "LS_id": " ".join(subscription.item_names)})
+            success = server_response == 'OK'
+            self.logger.debug("igstream.py LSClient subscribe: {0} Server response ---> <{1}>".format(subscription.item_names, server_response))
+        except:
+            success = False
+            self.logger.warning("igstream.py LSClient subscribe: {0} : errors occured during subscribe, did not complete".format(subscription.item_names))
+        
+        return self._current_subscription_key, success
 
     def unsubscribe(self, subcription_key):
         """Unregister the Subscription associated to the
@@ -361,7 +369,8 @@ class LSClient(object):
         Subscription instance for further dispatching to its listeners.
         """
         self.logger.debug('igstream.py LSClient _forward_update_message')
-        self.logger.debug("igstream.py LSClient _forward_update_message: Received update message ---> <{0}>".format(update_message))
+        self.logger.debug(
+            "igstream.py LSClient _forward_update_message: Received update message ---> <{0}>".format(update_message))
         tok = update_message.split(',', 1)
         table, item = int(tok[0]), tok[1]
         if table in self._subscriptions:
@@ -465,34 +474,37 @@ class IGStream(object):
 
     def fetch_one(self, subscription):
         self.logger.debug('igstream.py IGStream fetch_one')
+
         # we may get more than one, or none, in which case this blocks
         # so yeah, fetch_one is a terrible name
+        results = None
 
         # we're going to need a blank listen
         def do_nothing(self):
             pass
 
         # set the subscription
-        sub_key = self.subscribe(subscription=subscription, listener=do_nothing)
+        sub_key, success = self.subscribe(subscription=subscription, listener=do_nothing)
 
-        # wait for input THIS IS BLOCKING
-        count = 0
-        while (1):
-            count += 1
-            if len(self.lightstreamer_client._subscriptions[sub_key]._results) > 0:
-                break
-            elif count > 10000:  # if nothing after 10s, bail
-                break
-            else:
-                time.sleep(000.1)
+        if success:
+            # wait for input THIS IS BLOCKING
+            count = 0
+            while count < 1000:  # if nothing after 10s, bail
+                count += 1
+                if len(self.lightstreamer_client._subscriptions[sub_key]._results) > 0:
 
-        # grab the results before we lose it on unsubscribe
-        ret = self.lightstreamer_client._subscriptions[sub_key]._results
+                    # grab the results before we lose it on unsubscribe
+                    results = self.lightstreamer_client._subscriptions[sub_key]._results
+                    results = results[0]
+
+                    break
+                else:
+                    time.sleep(0.01)
 
         # clean up
         self.unsubscribe(sub_key)
 
-        return ret[0]
+        return results
 
     def subscribe(self, subscription, listener):
         self.logger.debug('igstream.py IGStream subscribe')
@@ -501,8 +513,8 @@ class IGStream(object):
         subscription.addlistener(listener)
 
         # Registering the Subscription
-        sub_key = self.lightstreamer_client.subscribe(subscription)
-        return sub_key
+        sub_key, success = self.lightstreamer_client.subscribe(subscription)
+        return sub_key, success
 
     def unsubscribe(self, sub_key):
         self.logger.debug('igstream.py IGStream unsubscribe')

@@ -43,9 +43,11 @@ class IGClient(object):
             config.read("config.conf")
         self.config = config
         self.auth = {}
-        self.debug = False
+        self.debug = True
         self.allowance = {}
         self.recent_calls = []
+
+        self.accountId = None
 
         self.API_ENDPOINT = self.config['Config']['API_ENDPOINT']
         self.API_KEY = self.config['Config']['API_KEY']
@@ -90,24 +92,33 @@ class IGClient(object):
 
         for i in d['accounts']:
             if str(i['accountType']) == self.config['Config']['ACCOUNT_TYPE']:
-                #print ("Spreadbet Account ID is : " + str(i['accountId']))
+                self.logger.info("Spreadbet Account ID is : " + str(i['accountId']))
                 self.accountId = str(i['accountId'])
                 break
 
         if set_default:
-            #SET SPREAD BET ACCOUNT AS DEFAULT
-            self.update_session({"accountId":self.accountId,"defaultAccount": "True"})
-            #ERROR about account ID been the same, Ignore!
+            # SET SPREAD BET ACCOUNT AS DEFAULT
+            self.logger.debug("Setting SPREADBET account as default")
+            self.update_session({"accountId": self.accountId, "defaultAccount": "True"})
+            # ERROR about account ID been the same, Ignore!
 
         return ((r, json.loads(r.text))[ self.json == True ])
 
     def _handlereq(self, r: object) -> object:
         self.logger.debug('igclient.py IGClient _handlereq')
-        if self.debug == True:
-            try:
-                print(r.text)
-            except Exception:
-                pass
+
+        if hasattr(r, 'text'):
+            if type(r.text) is str:
+                try:
+                    self.logger.debug(r.text)
+                except:
+                    self.logger.debug("igclient.py IGClient _handlereq: Non-string request-response")
+        # if self.debug == True:
+        #     try:
+        #         print(r.text)
+        #     except Exception:
+        #         pass
+
         return ((r, json.loads(r.text))[ self.json == True ])
 
     def _authheadersfordelete(self):
@@ -157,6 +168,11 @@ class IGClient(object):
 
     @trackcall
     def positions_otc(self, data):
+        """
+        Create a new position
+        :param data:
+        :return:
+        """
         self.logger.debug('igclient.py IGClient positions_otc')
         if eval(self.config['Trade']['always_guarantee_stops']):
             data['guaranteedStop'] = True
@@ -166,6 +182,11 @@ class IGClient(object):
 
     @trackcall
     def positions_otc_close(self, data):
+        """
+        Close (delete) a position
+        :param data:
+        :return:
+        """
         self.logger.debug('igclient.py IGClient positions_otc_close')
         return self._handlereq( requests.post(self.API_ENDPOINT + '/positions/otc', data=json.dumps(data), headers=self._authheadersfordelete()) )
 
