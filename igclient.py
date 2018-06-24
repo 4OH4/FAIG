@@ -15,6 +15,7 @@ import requests
 import json
 import time
 import logging
+import os
 
 
 def trackcall(f):
@@ -40,7 +41,16 @@ class IGClient(object):
         if config is None:
             config = configparser.ConfigParser()
             config.read("default.conf")
+            config.read("config_docker.conf")
             config.read("config.conf")
+        # Read variables from environment variables, if necessary
+        for section, key in [('Config', 'API_KEY'), ('Auth', 'USERNAME'), ('Auth', 'PASSWORD')]:
+            if (config[section][key] == 'environment_variable') & (key in os.environ):
+                try:
+                    config[section][key] = os.environ[key]
+                except:
+                    # Hope for following config file to pick this up
+                    pass
         self.config = config
         self.auth = {}
         self.debug = True
