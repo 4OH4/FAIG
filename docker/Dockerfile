@@ -23,9 +23,10 @@ RUN conda config --add channels conda-forge \
 # ONBUILD ADD environment.yml /environment.yml
 # ONBUILD RUN conda env create -f /environment.yml -n app
 
-# activate the environment
+# activate the environment (put the environment at the top of the path)
 ENV PATH /opt/conda/envs/faig/bin:$PATH
 
-# RUN python streamer.py
+# Start he Lightstream subscription service
+# Need to configuration data available - probably via environment variables?
+CMD python streamer.py
 
-# Need to setup configuration file before running!

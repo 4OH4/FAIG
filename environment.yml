@@ -4,7 +4,5 @@ dependencies:
  - numpy==1.14.0
  - pyyaml==3.12
  - requests
- - scikit-learn==0.19.1
- - scipy==1.0.0
  - urllib3==1.21.1
  - pandas

@@ -13,7 +13,6 @@
 from igclient import IGClient
 import igstream
 import time as systime
-import lib.util
 import json
 
 import random

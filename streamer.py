@@ -35,10 +35,13 @@ class TickDB:
         logging.debug('streamer.py TickDB __init__:')
         self._idx = 0
         self._tick_buffer = self.initialise_tick_buffer()
-        self._tick_df = pd.DataFrame(columns=['idx',
-                                              'timestamp',
-                                              'epic_id',
-                                              'O', 'H', 'L', 'C', 'spread'])
+        self._tick_df = self.initialise_tick_df()
+
+    def initialise_tick_df(self):
+        return pd.DataFrame(columns=['idx',
+                                      'timestamp',
+                                      'epic_id',
+                                      'O', 'H', 'L', 'C', 'spread'])
 
     def initialise_tick_buffer(self):
         return pd.DataFrame(columns=['idx',
@@ -124,14 +127,15 @@ for epic_id in epic_list:
     
 time_base = time.time()
 hold = True
-wait_secs = 3600
+wait_secs = 360
 save_file = 'tick_data_'
-file_counter=0
+file_counter = 0
 
 while hold:
     if (time.time()-time_base) > wait_secs:
         print('Saving data...')
         tick_db._tick_df.to_csv(save_file+'%04d'%file_counter+'.csv')
+        tick_db._tick_df = tick_db.initialise_tick_df()
         file_counter += 1
         time_base = time.time()
     else:
