@@ -8,6 +8,7 @@ import pandas as pd
 import time
 import datetime
 import numpy as np
+import os
 
 import logging
 
@@ -116,9 +117,15 @@ def handle_update(item_update):
 # Data storage
 tick_db = TickDB()
 
+log_file_save_dir = 'tick_data'
+if not os.path.exists(log_file_save_dir):
+    os.mkdir(log_file_save_dir)
+
 # Manage subscriptions
 epic_list = ["IX.D.FTSE.CFD.IP",
-             "CS.D.BITCOIN.CFD.IP"]
+             "CS.D.EURUSD.TODAY.IP",
+             "CS.D.EURGBP.TODAY.IP",
+             "CS.D.GBPUSD.TODAY.IP"]
 
 for epic_id in epic_list:
     res = api.subscribe(epic_id, listener=handle_update)
@@ -134,7 +141,7 @@ file_counter = 0
 while hold:
     if (time.time()-time_base) > wait_secs:
         print('Saving data...')
-        tick_db._tick_df.to_csv(save_file+'%04d'%file_counter+'.csv')
+        tick_db._tick_df.to_csv(os.path.join(log_file_save_dir, save_file+'%05d'%file_counter+'.csv'))
         tick_db._tick_df = tick_db.initialise_tick_df()
         file_counter += 1
         time_base = time.time()

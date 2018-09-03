@@ -28,5 +28,5 @@ ENV PATH /opt/conda/envs/faig/bin:$PATH
 
 # Start he Lightstream subscription service
 # Need to configuration data available - probably via environment variables?
-CMD python streamer.py
+# CMD python streamer.py
 
